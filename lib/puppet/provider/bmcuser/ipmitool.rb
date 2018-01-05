@@ -13,7 +13,7 @@ Puppet::Type.type(:bmcuser).provide(:ipmitool) do
       'FUJITSU'           => '2',
       'FUJITSU SIEMENS'   => '2',
       'HP'                => '2',
-      'Intel Corporation' => '3',
+      'Intel Corporation' => '1',
   }
   PRIV = {
       :ADMINISTRATOR => 4,
@@ -22,6 +22,7 @@ Puppet::Type.type(:bmcuser).provide(:ipmitool) do
       :CALLBACK => 1,
       :OPERATOR => 3,
       :NOACCESS => 15,
+      'NO ACCESS' => 15,
   }
 
   def initialize(value={})
