@@ -31,7 +31,7 @@ Puppet::Type.type(:bmcuser).provide(:ipmitool) do
 
   def create
     set_username resource[:username]
-    set_userpass resource[:userpass]
+    userpass resource[:userpass]
     set_privlevel PRIV[resource[:privlevel]]
     set_enable id # finds an unused id
   end
@@ -57,7 +57,6 @@ Puppet::Type.type(:bmcuser).provide(:ipmitool) do
   end
 
   def set_userpass(value)
-    ipmitoolcmd([ "user", "set", "password", id, value ])
 
   end
 
@@ -72,6 +71,17 @@ Puppet::Type.type(:bmcuser).provide(:ipmitool) do
 
   def set_disable(value)
     ipmitoolcmd([ "user", "disable", value ])
+  end
+
+  # get userpass
+  def userpass
+   valid = ipmitoolcmd(["user", "test" @resource[:id] "20" @resource[:userpass] ])
+   fail(valid)
+  end 
+
+  # set userpass
+  def userpass(value)
+    ipmitoolcmd([ "user", "set", "password", id, value ])
   end
 
   def users
@@ -118,7 +128,7 @@ Puppet::Type.type(:bmcuser).provide(:ipmitool) do
       id, name, callin, linkauth, enabled, priv = line.chomp.split(' ', 6)
       # create the resource
       users << new(:name => name, :username => name, :id => id, :ensure => :present,
-                   :privlevel => priv, :userpass => '**Hidden**' )
+                   :privlevel => priv )
     end
     users
   end
