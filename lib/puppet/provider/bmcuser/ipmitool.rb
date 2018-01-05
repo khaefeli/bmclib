@@ -74,16 +74,28 @@ Puppet::Type.type(:bmcuser).provide(:ipmitool) do
     ipmitoolcmd([ "user", "disable", value ])
   end
 
-  # get userpass
-  def userpass
-   valid = ipmitoolcmd(["user", "test" @resource[:id] "20" @resource[:userpass] ])
-   fail(valid)
-  end 
+   # get userpass
+   def userpass
+       args = [command(:ipmitoolcmd), "user", "test", @resource[:id], "20", @resource[:userpass]]
+       output = Puppet::Util::Execution.execute(args, :failonfail => false, :combine => false)
+       if output.exitstatus == 0
+         true
+       elsif output.exitstatus == 1
+         false
+       else
+         self.warning _("Could not check for updates, '%{ipmitoolcmd} password test' exited with %{status}") % { cmd: command(:ipmitoolcmd), status: output.exitstatus }
+       end
+   end
 
-  # set userpass
-  def userpass(value)
-    ipmitoolcmd([ "user", "set", "password", id, value ])
-  end
+   # set userpass
+   def userpass=(value)
+     case userpass
+     when true
+       self.warning "nothing todo"
+     when false
+       ipmitoolcmd([ "user", "set", "password", id, @resource[:userpass] ])
+     end
+   end
 
   def users
     unless @users
@@ -95,7 +107,7 @@ Puppet::Type.type(:bmcuser).provide(:ipmitool) do
         id, name, callin, linkauth, enabled, priv = line.chomp.split(' ', 6)
         # create the resource
         users << {:name => name, :username => name, :id => id, :enabled => enabled,
-                  :callin => callin, :linkauth => linkauth , :privlevel => priv, :userpass => '**Not*Available****' }
+                  :callin => callin, :linkauth => linkauth , :privlevel => priv}
       end
     end
     @users
@@ -129,7 +141,7 @@ Puppet::Type.type(:bmcuser).provide(:ipmitool) do
       id, name, callin, linkauth, enabled, priv = line.chomp.split(' ', 6)
       # create the resource
       users << new(:name => name, :username => name, :id => id, :ensure => :present,
-                   :privlevel => priv )
+                   :privlevel => priv)
     end
     users
   end
@@ -146,7 +158,6 @@ Puppet::Type.type(:bmcuser).provide(:ipmitool) do
   end
 
   def channel
-    CHANNEL_LOOKUP.fetch(Facter.value(:dmi)['board']['manufacturer'], '1')])
+    CHANNEL_LOOKUP.fetch(Facter.value(:dmi)['board']['manufacturer'], '1')
   end
 end
-
