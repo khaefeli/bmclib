@@ -13,7 +13,7 @@ Puppet::Type.type(:bmcuser).provide(:ipmitool) do
       'FUJITSU'           => '2',
       'FUJITSU SIEMENS'   => '2',
       'HP'                => '2',
-      'Intel Corporation' => '3',
+      'Intel Corporation' => '1',
   }
   PRIV = {
       :ADMINISTRATOR => 4,
@@ -22,8 +22,12 @@ Puppet::Type.type(:bmcuser).provide(:ipmitool) do
       :CALLBACK => 1,
       :OPERATOR => 3,
       :NOACCESS => 15,
+      'NO ACCESS' => 15,
   }
 
+  # TODO: set the right channel for new user, atm they get channel 0
+  # which means no web interface access
+  
   def initialize(value={})
     super(value)
     @property_flush = {}
@@ -31,7 +35,7 @@ Puppet::Type.type(:bmcuser).provide(:ipmitool) do
 
   def create
     set_username resource[:username]
-    set_userpass resource[:userpass]
+    userpass resource[:userpass]
     set_privlevel PRIV[resource[:privlevel]]
     set_enable id # finds an unused id
   end
@@ -57,7 +61,6 @@ Puppet::Type.type(:bmcuser).provide(:ipmitool) do
   end
 
   def set_userpass(value)
-    ipmitoolcmd([ "user", "set", "password", id, value ])
 
   end
 
@@ -74,6 +77,29 @@ Puppet::Type.type(:bmcuser).provide(:ipmitool) do
     ipmitoolcmd([ "user", "disable", value ])
   end
 
+   # get userpass
+   def userpass
+       args = [command(:ipmitoolcmd), "user", "test", @resource[:id], "20", @resource[:userpass]]
+       output = Puppet::Util::Execution.execute(args, :failonfail => false, :combine => false)
+       if output.exitstatus == 0
+         true
+       elsif output.exitstatus == 1
+         false
+       else
+         self.warning _("Could not check for updates, '%{ipmitoolcmd} password test' exited with %{status}") % { cmd: command(:ipmitoolcmd), status: output.exitstatus }
+       end
+   end
+
+   # set userpass
+   def userpass=(value)
+     case userpass
+     when true
+       self.warning "nothing todo"
+     when false
+       ipmitoolcmd([ "user", "set", "password", id, @resource[:userpass] ])
+     end
+   end
+
   def users
     unless @users
       userdata = ipmitoolcmd([ "user", "list", CHANNEL_LOOKUP.fetch(Facter.value(:dmi)['board']['manufacturer'], '1')])
@@ -84,7 +110,7 @@ Puppet::Type.type(:bmcuser).provide(:ipmitool) do
         id, name, callin, linkauth, enabled, priv = line.chomp.split(' ', 6)
         # create the resource
         users << {:name => name, :username => name, :id => id, :enabled => enabled,
-                  :callin => callin, :linkauth => linkauth , :privlevel => priv, :userpass => '**Not*Available****' }
+                  :callin => callin, :linkauth => linkauth , :privlevel => priv}
       end
     end
     @users
@@ -118,7 +144,7 @@ Puppet::Type.type(:bmcuser).provide(:ipmitool) do
       id, name, callin, linkauth, enabled, priv = line.chomp.split(' ', 6)
       # create the resource
       users << new(:name => name, :username => name, :id => id, :ensure => :present,
-                   :privlevel => priv, :userpass => '**Hidden**' )
+                   :privlevel => priv)
     end
     users
   end
@@ -135,7 +161,6 @@ Puppet::Type.type(:bmcuser).provide(:ipmitool) do
   end
 
   def channel
-    CHANNEL_LOOKUP.fetch(Facter.value(:dmi)['board']['manufacturer'], '1')])
+    CHANNEL_LOOKUP.fetch(Facter.value(:dmi)['board']['manufacturer'], '1')
   end
 end
-
