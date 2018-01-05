@@ -25,6 +25,9 @@ Puppet::Type.type(:bmcuser).provide(:ipmitool) do
       'NO ACCESS' => 15,
   }
 
+  # TODO: set the right channel for new user, atm they get channel 0
+  # which means no web interface access
+  
   def initialize(value={})
     super(value)
     @property_flush = {}
